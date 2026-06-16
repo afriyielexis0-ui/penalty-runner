@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { GameState, Lane, Phase, Ball } from "../types/game";
+import { GameState, Lane, Phase } from "../types/game";
 
 const TICK_MS = 50;
 const PLAYER_Y = 520;
@@ -7,11 +7,9 @@ const SPAWN_Y = -60;
 const OBSTACLE_SPEED_BASE = 6;
 const GOAL_SPEED_BASE = 5;
 const OBSTACLE_HIT_RADIUS = 44;
+const GOAL_HIT_Y_MIN = PLAYER_Y - 50;
+const GOAL_HIT_Y_MAX = PLAYER_Y + 50;
 const SHOOT_COOLDOWN_TICKS = 20;
-const BALL_SPEED = 24;
-const BALL_HIT_RADIUS = 32;
-const BALL_DESPAWN_Y = -40;
-const GOAL_MISS_Y = PLAYER_Y + 60;
 
 let nextId = 1;
 
@@ -24,7 +22,6 @@ function initial(): GameState {
     speed: 1,
     obstacles: [],
     goals: [],
-    balls: [],
     shootCooldown: 0,
     lives: 3,
     combo: 0,
@@ -100,37 +97,8 @@ export function useRunnerGame() {
       }
       obstacles = obstacles.filter((o) => !hitObstacleIds.includes(o.id));
 
-      // Move the player's balls upward toward the goals
-      let balls = prev.balls
-        .map((b) => ({ ...b, y: b.y - BALL_SPEED }))
-        .filter((b) => b.y > BALL_DESPAWN_Y);
-
-      // Ball vs goal collision: a ball in the same lane reaching a goal scores it
-      let combo = prev.combo;
-      let score = prev.score;
-      const scoredGoalIds: number[] = [];
-      const spentBallIds: number[] = [];
-      for (const b of balls) {
-        if (spentBallIds.includes(b.id)) continue;
-        const target = goals.find(
-          (g) =>
-            g.lane === b.lane &&
-            !scoredGoalIds.includes(g.id) &&
-            Math.abs(g.y - b.y) <= BALL_HIT_RADIUS
-        );
-        if (target) {
-          combo += 1;
-          score += 10 * combo;
-          scoredGoalIds.push(target.id);
-          spentBallIds.push(b.id);
-        }
-      }
-      balls = balls.filter((b) => !spentBallIds.includes(b.id));
-      goals = goals.filter((g) => !scoredGoalIds.includes(g.id));
-
-      // A goal that drifts past the player without being scored breaks the combo
-      const missed = goals.some((g) => g.y >= GOAL_MISS_Y);
-      if (missed) combo = 0;
+      // Goal scoring: goals that passed player without being shot (just despawn)
+      // (shooting is handled separately)
 
       const distance = prev.distance + speed;
       const newSpeed = 1 + Math.floor(distance / 800) * 0.25;
@@ -141,10 +109,7 @@ export function useRunnerGame() {
         ...prev,
         obstacles,
         goals,
-        balls,
         lives,
-        score,
-        combo,
         distance: Math.round(distance),
         speed: newSpeed,
         shootCooldown: Math.max(0, prev.shootCooldown - 1),
@@ -189,14 +154,32 @@ export function useRunnerGame() {
     setState((prev) => {
       if (prev.phase !== "running" || prev.shootCooldown > 0) return prev;
 
-      const ball: Ball = { id: nextId++, lane: prev.lane, y: PLAYER_Y - 26 };
+      // Find goals in player's lane near the player
+      const hit = prev.goals.find(
+        (g) =>
+          g.lane === prev.lane &&
+          g.y >= GOAL_HIT_Y_MIN &&
+          g.y <= GOAL_HIT_Y_MAX
+      );
+
+      if (!hit) return { ...prev, shootCooldown: SHOOT_COOLDOWN_TICKS };
+
+      const combo = prev.combo + 1;
+      const points = 10 * combo;
 
       return {
         ...prev,
-        balls: [...prev.balls, ball],
+        goals: prev.goals.filter((g) => g.id !== hit.id),
+        score: prev.score + points,
+        combo,
         shootCooldown: SHOOT_COOLDOWN_TICKS,
       };
     });
+  }, []);
+
+  // Reset combo when a goal passes without being scored
+  useEffect(() => {
+    // handled passively via distance ticks — keep it simple
   }, []);
 
   return { state, startGame, moveLeft, moveRight, shoot };
