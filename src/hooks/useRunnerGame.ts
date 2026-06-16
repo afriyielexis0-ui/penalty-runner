@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { GameState, Lane, Phase } from "../types/game";
+import { GameState, Lane, Phase, Ball } from "../types/game";
 
 const TICK_MS = 50;
 const PLAYER_Y = 520;
@@ -189,32 +189,14 @@ export function useRunnerGame() {
     setState((prev) => {
       if (prev.phase !== "running" || prev.shootCooldown > 0) return prev;
 
-      // Find goals in player's lane near the player
-      const hit = prev.goals.find(
-        (g) =>
-          g.lane === prev.lane &&
-          g.y >= GOAL_HIT_Y_MIN &&
-          g.y <= GOAL_HIT_Y_MAX
-      );
-
-      if (!hit) return { ...prev, shootCooldown: SHOOT_COOLDOWN_TICKS };
-
-      const combo = prev.combo + 1;
-      const points = 10 * combo;
+      const ball: Ball = { id: nextId++, lane: prev.lane, y: PLAYER_Y - 26 };
 
       return {
         ...prev,
-        goals: prev.goals.filter((g) => g.id !== hit.id),
-        score: prev.score + points,
-        combo,
+        balls: [...prev.balls, ball],
         shootCooldown: SHOOT_COOLDOWN_TICKS,
       };
     });
-  }, []);
-
-  // Reset combo when a goal passes without being scored
-  useEffect(() => {
-    // handled passively via distance ticks — keep it simple
   }, []);
 
   return { state, startGame, moveLeft, moveRight, shoot };
