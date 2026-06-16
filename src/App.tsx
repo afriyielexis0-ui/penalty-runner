@@ -17,7 +17,7 @@ function Heart({ filled }: { filled: boolean }) {
 
 export default function App() {
   const { state, startGame, moveLeft, moveRight, shoot } = useRunnerGame();
-  const { phase, lane, score, distance, obstacles, goals, lives, combo, shootCooldown } = state;
+  const { phase, lane, score, distance, obstacles, goals, balls, lives, combo, shootCooldown } = state;
 
   const handleKey = useCallback(
     (e: KeyboardEvent) => {
@@ -155,6 +155,30 @@ export default function App() {
             }}
           >
             🚧
+          </div>
+        ))}
+
+        {/* Balls in flight */}
+        {balls.map((b) => (
+          <div
+            key={b.id}
+            style={{
+              position: "absolute",
+              left: LANE_X[b.lane as Lane] - 12,
+              top: b.y - 12,
+              width: 24,
+              height: 24,
+              borderRadius: 12,
+              background: "#f5f5f0",
+              border: "2px solid #1a1a1a",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 16,
+              boxShadow: "0 0 8px rgba(255,255,255,0.6)",
+            }}
+          >
+            ⚽
           </div>
         ))}
 
