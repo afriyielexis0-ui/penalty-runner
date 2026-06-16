@@ -13,6 +13,12 @@ export interface Goal {
   y: number;
 }
 
+export interface Ball {
+  id: number;
+  lane: Lane;
+  y: number;
+}
+
 export interface GameState {
   phase: Phase;
   lane: Lane;
@@ -21,6 +27,7 @@ export interface GameState {
   speed: number;
   obstacles: Obstacle[];
   goals: Goal[];
+  balls: Ball[];
   shootCooldown: number;
   lives: number;
   combo: number;
